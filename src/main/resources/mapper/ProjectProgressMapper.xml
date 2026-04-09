@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.project.pms.mapper.ProjectProgressMapper">
+
+    <select id="selectProjectProgressList" resultType="com.project.pms.entity.po.ProjectProgress">
+        SELECT pp.* FROM project_progress pp
+        <!-- 当需要按学生ID过滤时，JOIN project_info 获取 sid -->
+        <if test="query.sid != null">
+            INNER JOIN project_info pi ON pp.p_id = pi.id AND pi.sid = #{query.sid}
+        </if>
+        <where>
+            <if test="query.id!= null">
+                AND pp.id = #{query.id}
+            </if>
+            <if test="query.pId!= null">
+                AND pp.p_id = #{query.pId}
+            </if>
+            <if test="query.status!= null">
+                AND pp.status = #{query.status}
+            </if>
+            <if test="query.title!= null and query.title!= ''">
+                AND pp.title LIKE CONCAT('%', #{query.title}, '%')
+            </if>
+            <if test="query.content!= null and query.content!= ''">
+                AND pp.content LIKE CONCAT('%', #{query.content}, '%')
+            </if>
+            <if test="query.opinion!= null and query.opinion!= ''">
+                AND pp.opinion LIKE CONCAT('%', #{query.opinion}, '%')
+            </if>
+
+            <!-- 提交时间范围查询 -->
+            <if test="query.createTimeStart != null">
+                AND pp.submit_time >= #{query.createTimeStart}
+            </if>
+            <if test="query.createTimeEnd != null">
+                AND pp.submit_time &lt;= #{query.createTimeEnd}
+            </if>
+        </where>
+
+        <choose>
+            <when test="query.orderByClause!= null and query.orderByClause!= ''">
+                ORDER BY ${query.orderByClause}
+            </when>
+            <otherwise>
+                ORDER BY pp.id
+                <if test="query.isAsc">ASC</if>
+                <if test="!query.isAsc">DESC</if>
+            </otherwise>
+        </choose>
+    </select>
+</mapper>

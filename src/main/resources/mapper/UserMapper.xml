@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.project.pms.mapper.UserMapper">
+    <select id="selectUserInfoList" resultType="com.project.pms.entity.po.User">
+        SELECT * FROM user
+        <where>
+            <if test="query.id!= null">
+                AND id = #{query.id}
+            </if>
+            <if test="query.role!= null">
+                AND role = #{query.role}
+            </if>
+            <if test="query.gender!= null">
+                AND gender = #{query.gender}
+            </if>
+            <if test="query.status!= null">
+                AND status = #{query.status}
+            </if>
+
+            <!-- 创建时间范围查询 -->
+            <if test="query.createTimeStart != null">
+                AND create_time >= #{query.createTimeStart}
+            </if>
+            <if test="query.createTimeEnd != null">
+                AND create_time &lt;= #{query.createTimeEnd}
+            </if>
+
+            <!-- 更新时间范围查询 -->
+            <if test="query.updateTimeStart != null">
+                AND update_time >= #{query.updateTimeStart}
+            </if>
+            <if test="query.updateTimeEnd != null">
+                AND update_time &lt;= #{query.updateTimeEnd}
+            </if>
+
+
+            <if test="query.username!= null and query.username!= ''">
+                AND username LIKE CONCAT('%', #{query.username}, '%')
+            </if>
+            <if test="query.nickname!= null and query.nickname!= ''">
+                AND nickname LIKE CONCAT('%', #{query.nickname}, '%')
+            </if>
+            <if test="query.phone!= null and query.phone!= ''">
+                AND phone LIKE CONCAT('%', #{query.phone}, '%')
+            </if>
+            <if test="query.email!= null and query.email!= ''">
+                AND email LIKE CONCAT('%', #{query.email}, '%')
+            </if>
+        </where>
+
+        <choose>
+            <when test="query.orderByClause!= null and query.orderByClause!= ''">
+                ORDER BY ${query.orderByClause}
+            </when>
+            <otherwise>
+                ORDER BY id
+                <if test="query.isAsc">ASC</if>
+                <if test="!query.isAsc">DESC</if>
+            </otherwise>
+        </choose>
+    </select>
+</mapper>
