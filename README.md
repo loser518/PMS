@@ -6,7 +6,7 @@
 
 ```
 PMS/
-├── backend/                 # Spring Boot 后端
+├── src/                     # Spring Boot 后端
 │   ├── src/main/java/
 │   ├── src/main/resources/
 │   ├── pom.xml
@@ -39,7 +39,7 @@ PMS/
 
 ### 后端
 ```bash
-cd backend
+cd PMS
 mvn spring-boot:run
 # 启动端口：9090
 ```
@@ -64,7 +64,6 @@ npm run build
 
 ### 后端部署
 ```bash
-cd backend
 mvn package -DskipTests
 java -jar target/pms-0.0.1-SNAPSHOT.jar
 ```
