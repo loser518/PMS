@@ -31,3 +31,14 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Frontend ###
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/dist-ssr/
+frontend/*.local
+frontend/.DS_Store
+
+### Logs ###
+logs/
