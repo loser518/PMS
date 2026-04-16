@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.project.pms.mapper.ProjectInfoMapper">
+
+    <select id="selectProjectInfoList" resultType="com.project.pms.entity.po.ProjectInfo">
+        SELECT pi.*, u.nickname AS student_name
+        FROM project_info pi
+        LEFT JOIN user u ON pi.sid = u.id
+        <where>
+            <if test="query.id!= null">
+                AND pi.id = #{query.id}
+            </if>
+            <if test="query.sid!= null">
+                AND pi.sid = #{query.sid}
+            </if>
+            <if test="query.tid!= null">
+                AND pi.tid= #{query.tid}
+            </if>
+            <if test="query.status!= null">
+                AND pi.status = #{query.status}
+            </if>
+            <if test="query.title!= null and query.title!= ''">
+                AND pi.title LIKE CONCAT('%', #{query.title}, '%')
+            </if>
+            <if test="query.description!= null and query.description!= ''">
+                AND pi.description LIKE CONCAT('%', #{query.description}, '%')
+            </if>
+            <if test="query.opinion!= null and query.opinion!= ''">
+                AND pi.opinion LIKE CONCAT('%', #{query.opinion}, '%')
+            </if>
+
+            <!-- 创建时间范围查询 -->
+            <if test="query.createTimeStart != null">
+                AND pi.create_time >= #{query.createTimeStart}
+            </if>
+            <if test="query.createTimeEnd != null">
+                AND pi.create_time &lt;= #{query.createTimeEnd}
+            </if>
+
+            <!-- 更新时间范围查询 -->
+            <if test="query.updateTimeStart != null">
+                AND pi.update_time >= #{query.updateTimeStart}
+            </if>
+            <if test="query.updateTimeEnd != null">
+                AND pi.update_time &lt;= #{query.updateTimeEnd}
+            </if>
+        </where>
+
+        <choose>
+            <when test="query.orderByClause!= null and query.orderByClause!= ''">
+                ORDER BY ${query.orderByClause}
+            </when>
+            <otherwise>
+                ORDER BY pi.id
+                <if test="query.isAsc">ASC</if>
+                <if test="!query.isAsc">DESC</if>
+            </otherwise>
+        </choose>
+    </select>
+</mapper>
