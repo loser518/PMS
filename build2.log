@@ -1,0 +1,43 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------------< com.project:PMS >---------------------------
+[INFO] Building PMS 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-clean-plugin:3.3.2:clean (default-clean) @ PMS ---
+[INFO] Deleting C:\Users\86171\Desktop\1\PMS\target
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ PMS ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 13 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.8.1:compile (default-compile) @ PMS ---
+[INFO] Changes detected - recompiling the module!
+[INFO] Compiling 149 source files to C:\Users\86171\Desktop\1\PMS\target\classes
+[INFO] /C:/Users/86171/Desktop/1/PMS/src/main/java/com/project/pms/utils/JwtUtil.java: C:\Users\86171\Desktop\1\PMS\src\main\java\com\project\pms\utils\JwtUtil.java使用或覆盖了已过时的 API。
+[INFO] /C:/Users/86171/Desktop/1/PMS/src/main/java/com/project/pms/utils/JwtUtil.java: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+[INFO] /C:/Users/86171/Desktop/1/PMS/src/main/java/com/project/pms/utils/RedisUtil.java: C:\Users\86171\Desktop\1\PMS\src\main\java\com\project\pms\utils\RedisUtil.java使用了未经检查或不安全的操作。
+[INFO] /C:/Users/86171/Desktop/1/PMS/src/main/java/com/project/pms/utils/RedisUtil.java: 有关详细信息, 请使用 -Xlint:unchecked 重新编译。
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ PMS ---
+[INFO] skip non existing resourceDirectory C:\Users\86171\Desktop\1\PMS\src\test\resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.8.1:testCompile (default-testCompile) @ PMS ---
+[INFO] Changes detected - recompiling the module!
+[INFO] Compiling 1 source file to C:\Users\86171\Desktop\1\PMS\target\test-classes
+[INFO] 
+[INFO] --- maven-surefire-plugin:3.1.2:test (default-test) @ PMS ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- maven-jar-plugin:3.3.0:jar (default-jar) @ PMS ---
+[INFO] Building jar: C:\Users\86171\Desktop\1\PMS\target\PMS-0.0.1-SNAPSHOT.jar
+[INFO] 
+[INFO] --- spring-boot-maven-plugin:3.2.4:repackage (repackage) @ PMS ---
+[INFO] Replacing main artifact C:\Users\86171\Desktop\1\PMS\target\PMS-0.0.1-SNAPSHOT.jar with repackaged archive, adding nested dependencies in BOOT-INF/.
+[INFO] The original artifact has been renamed to C:\Users\86171\Desktop\1\PMS\target\PMS-0.0.1-SNAPSHOT.jar.original
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  30.044 s
+[INFO] Finished at: 2026-04-15T17:22:45+08:00
+[INFO] ------------------------------------------------------------------------

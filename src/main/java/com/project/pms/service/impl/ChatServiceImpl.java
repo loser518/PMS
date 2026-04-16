@@ -110,8 +110,16 @@ public class ChatServiceImpl implements IChatService {
             m.put("chat", chat);
             CompletableFuture<Void> f1 = CompletableFuture.runAsync(() ->
                     m.put("user", userInfoService.getOneUserInfo(chat.getAnotherId())));
-            CompletableFuture<Void> f2 = CompletableFuture.runAsync(() ->
-                    m.put("detail", chatDetailedService.getDetails(chat.getAnotherId(), uid, 0L)));
+            CompletableFuture<Void> f2 = CompletableFuture.runAsync(() -> {
+                // 获取最近一条消息（取列表第一条）
+                Map<String, Object> details = chatDetailedService.getDetails(chat.getAnotherId(), uid, 0L);
+                List<?> list = (List<?>) details.get("list");
+                if (list != null && !list.isEmpty()) {
+                    m.put("detail", list.get(0));
+                } else {
+                    m.put("detail", null);
+                }
+            });
             f1.join();
             f2.join();
             return m;

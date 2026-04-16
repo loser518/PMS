@@ -1,0 +1,98 @@
+server:
+  port: 9090
+
+ws:
+  port: 9091
+
+server:
+  servlet:
+    context-path: /api
+    session:
+      timeout: PT60M
+
+spring:
+  application:
+    name: university-project-system
+
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/university_project?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: lsy719689
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: HikariCPDatasource
+      minimum-idle: 5
+      maximum-pool-size: 10
+      idle-timeout: 180000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      connection-test-query: SELECT 1
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  elasticsearch:
+    uris: http://localhost:9200
+    connection-timeout: 60000
+
+  ai:
+    deepseek:
+      api-key: ${DASHSCOPE_API_KEY}
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      chat:
+        options:
+          model: deepseek-v3
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: always
+            platform: mysql
+
+logging:
+  level:
+    root: info
+    com.university.project: debug
+    org.springframework.web: info
+    org.hibernate.SQL: debug
+    org.hibernate.type.descriptor.sql.BasicBinder: trace
+  file:
+    name: logs/application.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 30
+
+project:
+  file:
+    upload-dir: ./uploads
+    allowed-types: pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,zip,rar
+  page:
+    default-size: 10
+    max-size: 100
+
+minio:
+  endpoint: http://112.124.45.189:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket-name: pms-bucket
+  connect-timeout: 60000
+  read-timeout: 60000
+  write-timeout: 60000
+  upload:
+    allowed-extensions: pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,zip,rar,webp,txt,mp3,mp4,gif
+    max-file-size: 104857600
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl

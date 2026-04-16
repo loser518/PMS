@@ -115,6 +115,19 @@ public class AnnouncementServiceImpl extends ServiceImpl<AnnouncementMapper, Ann
      */
     @Override
     public PageResult<Announcement> getAnnouncement(AnnouncementQuery query) {
+        // 根据用户角色过滤可见公告（管理员role=2可看所有，学生role=0和教师role=1按角色过滤）
+        Integer role = currentUser.getRole();
+        if (role != 2) {  // 非管理员
+            java.util.List<String> visibleRoles = new java.util.ArrayList<>();
+            visibleRoles.add("ALL");  // 全部可见
+            if (role == 0) {
+                visibleRoles.add("STUDENT");  // 学生额外可见学生公告
+            } else if (role == 1) {
+                visibleRoles.add("TEACHER");  // 教师额外可见教师公告
+            }
+            query.setTargetRoles(visibleRoles);
+        }
+
         Page<Announcement> page = Page.of(query.getPageNo(), query.getPageSize());
         announcementMapper.selectAnnouncementList(page, query);
         List<Announcement> list = page.getRecords();

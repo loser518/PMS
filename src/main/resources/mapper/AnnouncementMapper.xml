@@ -16,6 +16,12 @@
             <if test="query.targetRole!= null and query.targetRole!=''">
                 AND target_role = #{query.targetRole}
             </if>
+            <if test="query.targetRoles != null and query.targetRoles.size() > 0">
+                AND target_role IN
+                <foreach collection="query.targetRoles" item="role" open="(" separator="," close=")">
+                    #{role}
+                </foreach>
+            </if>
             <if test="query.priority!= null">
                 AND priority = #{query.priority}
             </if>

@@ -1,6 +1,8 @@
 package com.project.pms.ai;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.pms.entity.po.Announcement;
 import com.project.pms.entity.po.ProjectInfo;
 import com.project.pms.entity.po.ProjectProgress;
@@ -11,12 +13,17 @@ import com.project.pms.mapper.ProjectInfoMapper;
 import com.project.pms.mapper.ProjectProgressMapper;
 import com.project.pms.mapper.UserMapper;
 import com.project.pms.service.IProjectInfoService;
+import com.project.pms.utils.IpUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.annotation.RequestScope;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -40,6 +47,7 @@ public class CustomerServiceTools {
     private final AnnouncementMapper announcementMapper;
     private final IProjectInfoService projectInfoService;
     private final UserMapper userMapper;
+    private final WebClient webClient;
 
     @Tool(description = "查询当前登录学生的所有课题申报记录，返回课题名称、类型、审核状态和审核意见。" +
             "状态说明：0=待审核，1=审核通过，2=驳回，3=需修改。" +
@@ -273,6 +281,80 @@ public class CustomerServiceTools {
         List<User> userList = userMapper.selectList(queryWrapper);
 //        log.info("查询到的学生列表: {}", userList);
         return userList;
+    }
+
+    /**
+     * 获取当前访问用户的IP地址和归属地
+     * 优先从代理头（X-Forwarded-For等）获取，兼容服务器部署场景
+     */
+    @Tool(description = "获取当前登录用户的公网IP地址和归属地信息，用于回答用户询问'我的IP'或'查IP'类问题")
+    public String getMyIp(HttpServletRequest request) {
+        try {
+            String ip = IpUtil.getIpAddr(request);
+            // 注意：IpLocationService 无法在 Tool 线程中使用 SecurityContext，
+            // 仅返回 IP 地址，归属地通过外部 IP 查询服务获取
+            return "您的当前IP地址是：" + ip;
+        } catch (Exception e) {
+            return "无法获取您的IP地址，请稍后再试。";
+        }
+    }
+
+    /**
+     * 查询指定城市的天气信息
+     * 使用 wttr.in 免费 API（无需 key）
+     * 返回温度、天气状况、体感温度、风速等信息
+     */
+    @Tool(description = "查询指定城市的当前天气信息，用于回答用户询问‘天气’、'xx城市天气怎么样'类问题。参数 city 为城市名称（中文或英文均可）。")
+    public String getWeather(@ToolParam(description = "城市名称（中文或英文，如：北京、上海、Beijing）") String city) {
+        if (city == null || city.isBlank()) {
+            return "请提供要查询天气的城市名称，例如：查一下北京的天气";
+        }
+        try {
+            // 调用 wttr.in 免费天气 API，使用 JSON 格式
+            String response = webClient.get()
+                    .uri("https://wttr.in/{city}?format=j1", city.trim())
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            if (response == null || response.isBlank()) {
+                return "天气服务暂时不可用，请稍后再试。";
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(response);
+            JsonNode current = root.path("current_condition").get(0);
+
+            if (current.isMissingNode()) {
+                return "未能获取到【" + city + "】的天气信息，请检查城市名称是否正确。";
+            }
+
+            // 提取关键天气字段
+            String tempC = current.path("temp_C").asText("未知");           // 温度(℃)
+            String feelsLikeC = current.path("FeelsLikeC").asText("未知"); // 体感温度
+            String weatherDesc = current.path("weatherDesc").get(0).path("value").asText("未知"); // 天气描述
+            String windSpeed = current.path("windspeedKmph").asText("未知"); // 风速(km/h)
+            String humidity = current.path("humidity").asText("未知");      // 湿度(%)
+            String visibility = current.path("visibility").asText("未知"); // 能见度(km)
+            String uvIndex = current.path("uvIndex").asText("未知");        // 紫外线指数
+
+            return String.format("""
+                    【%s】当前天气
+
+                    🌡️ 温度：%s°C（体感 %s°C）
+                    🌤️ 天气：%s
+                    💨 风速：%s km/h
+                    💧 湿度：%s%%
+                    👁️ 能见度：%s km
+                    ☀️ 紫外线指数：%s
+                    """,
+                    city, tempC, feelsLikeC, weatherDesc,
+                    windSpeed, humidity, visibility, uvIndex);
+
+        } catch (Exception e) {
+            log.warn("天气查询失败 city={} err={}", city, e.getMessage());
+            return "天气查询失败，可能是城市名称不正确，请尝试使用英文城市名，如：Beijing、Tianjin。";
+        }
     }
 }
 

@@ -14,6 +14,7 @@ public class AnnouncementQuery extends PageQuery {
     private String title;
     private String content;
     private String targetRole;
+    private java.util.List<String> targetRoles;  // 用于IN查询
     private Integer priority;
     private Integer status;
     private Integer authorId;
