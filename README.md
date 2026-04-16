@@ -1,69 +1,62 @@
-# PMS - 高校课题管理系统
+# PMS Frontend
 
-基于 Spring Boot 3 + Vue 3 的高校课题管理系统，支持学生、教师、管理员三种角色。
-
-## 项目结构
-
-```
-PMS/
-├── src/                     # Spring Boot 后端
-│   ├── src/main/java/
-│   ├── src/main/resources/
-│   ├── pom.xml
-│   └── ...
-├── frontend/               # Vue 3 前端
-│   ├── src/
-│   ├── package.json
-│   ├── vite.config.js
-│   └── ...
-└── README.md
-```
+基于当前工作区 `PMS` Spring Boot 后端编写的 Vue3 + JavaScript 前端。
 
 ## 技术栈
 
-### 后端
-- Spring Boot 3.2.4
-- MyBatis-Plus
-- MySQL
-- JWT 认证
-- POI Excel 导入导出
+- Vue 3
+- Vue Router 4
+- Pinia
+- Axios
+- Vite
 
-### 前端
-- Vue 3 + Composition API
-- Vite 5
-- Element Plus
-- Pinia 状态管理
-- Vue Router
+## 已覆盖的后端接口
 
-## 快速启动
+- `/user/checkCode`
+- `/user/login`
+- `/user/register`
+- `/user/logout`
+- `/user/updatePassword`
+- `/userInfo`
+- `/userInfo/{id}`
+- `/userInfo/update`
+- `/userInfo/updateAvatar`
+- `/projectInfo`
+- `/projectInfo/update`
+- `/projectProgress`
+- `/projectProgress/update`
+- `/announcement`
+- `/announcement/update`
+- `/category`
+- `/category/update`
+- `/comment/tree/{tid}`
+- `/comment/add`
+- `/comment/{id}`
 
-### 后端
+## 页面
+
+- 登录/注册
+- 概览首页
+- 用户管理
+- 课题申报管理
+- 项目进度管理
+- 公告中心
+- 公告分类
+- 个人中心
+
+## 启动
+
 ```bash
-cd PMS
-mvn spring-boot:run
-# 启动端口：9090
-```
-
-### 前端
-```bash
-cd frontend
+cd pms-frontend
 npm install
 npm run dev
-# 启动端口：5173
 ```
 
-## 部署
+开发服务器默认端口为 `5173`，并通过 Vite 代理把 `/api` 转发到 `http://localhost:9090`。
 
-### 前端部署（Vercel）
-```bash
-cd frontend
-npm install
-npm run build
-# 将 dist 目录部署到 Vercel
-```
+## 说明
 
-### 后端部署
-```bash
-mvn package -DskipTests
-java -jar target/pms-0.0.1-SNAPSHOT.jar
-```
+1. 认证头使用 `Authorization: Bearer <token>`，与后端 `JwtAuthenticationTokenFilter` 对齐。
+2. 项目进度页面当前直接编辑 `fileUrl` / `fileName`，因为后端没有提供独立的进度附件上传接口。
+3. 公告评论区当前按公告 `id` 作为 `tid` 进行评论树展示。
+4. 用户管理与公告分类页面默认只对教师/管理员开放，和前端路由权限保持一致。
