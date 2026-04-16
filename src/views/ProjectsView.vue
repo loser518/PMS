@@ -287,8 +287,22 @@ onMounted(() => {
       </el-col>
     </el-row>
 
-    <el-card shadow="never" class="search-card">
-      <el-form :inline="true" :model="query">
+    <el-card shadow="never" class="main-card">
+      <template #header>
+        <div class="flex-between">
+          <div class="header-info">
+            <span class="header-title">课题管理</span>
+            <span class="header-tag">{{ page.total }} 条</span>
+          </div>
+          <div class="header-actions">
+            <el-button v-if="isStudent" type="success" :icon="Plus" @click="openEdit()">申报新课题</el-button>
+            <el-button :icon="Refresh" @click="loadData">刷新</el-button>
+          </div>
+        </div>
+      </template>
+
+      <!-- 搜索栏 -->
+      <el-form :inline="true" :model="query" class="filter-form">
         <el-form-item label="课题标题">
           <el-input v-model="query.title" placeholder="关键字" clearable/>
         </el-form-item>
@@ -300,19 +314,15 @@ onMounted(() => {
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="loadData">查询</el-button>
           <el-button :icon="Refresh" @click="resetQuery">重置</el-button>
-          <el-button v-if="isStudent" type="success" :icon="Plus" @click="openEdit()">申报新课题</el-button>
         </el-form-item>
       </el-form>
-    </el-card>
 
-    <el-card shadow="never">
       <!-- 导入导出工具栏（仅管理/教师可见） -->
       <div v-if="isAuditRole" class="table-toolbar">
         <div class="toolbar-left">
           <el-button type="warning" :icon="Upload" :loading="excelLoading" @click="triggerImportProject">批量导入</el-button>
           <el-button type="primary" :icon="Download" :loading="excelLoading" @click="handleExportProject">导出 Excel</el-button>
         </div>
-        <span class="table-tips">当前共 {{ page.total }} 条课题记录</span>
         <!-- 隐藏文件选择框 -->
         <input ref="importProjectFileRef" type="file" accept=".xlsx,.xls" style="display:none" @change="handleImportProjectFile"/>
       </div>
@@ -463,30 +473,25 @@ onMounted(() => {
               filterable
               :disabled="(isStudent && !canStudentEdit(form)) || (isAuditRole && !!form.id) || teacherLoading"
               style="width: 100%"
+              popper-class="teacher-select-dropdown"
           >
             <el-option
                 v-for="t in teacherOptions"
                 :key="t.tid"
-                :label="`${t.nickname}${t.title ? '（' + t.title + '）' : ''}${t.researchField ? ' · ' + t.researchField : ''}`"
+                :label="t.nickname"
                 :value="t.tid"
                 :disabled="t.full"
             >
-              <div class="teacher-option">
-                <span class="teacher-name">
-                  {{ t.nickname }}<el-tag v-if="t.title" size="small" type="info" style="margin-left:4px">{{ t.title }}</el-tag>
-                </span>
-                <span class="teacher-meta">
-                  <span v-if="t.researchField">{{ t.researchField }}</span>
-                  <el-tag
-                      v-if="t.maxStudentCount && t.maxStudentCount > 0"
-                      size="small"
-                      :type="t.full ? 'danger' : 'success'"
-                      style="margin-left:6px"
-                  >
-                    {{ t.full ? '已满额' : `剩余 ${t.maxStudentCount - (t.currentStudentCount ?? 0)} 名` }}
-                  </el-tag>
-                  <el-tag v-else size="small" type="success" style="margin-left:6px">名额不限</el-tag>
-                </span>
+              <div class="teacher-option-row">
+                <span class="teacher-name">{{ t.nickname }}</span>
+                <el-tag
+                    v-if="t.maxStudentCount && t.maxStudentCount > 0"
+                    size="small"
+                    :type="t.full ? 'danger' : 'success'"
+                >
+                  {{ t.full ? '已满额' : `剩余${t.maxStudentCount - (t.currentStudentCount ?? 0)}名` }}
+                </el-tag>
+                <el-tag v-else size="small" type="success">名额不限</el-tag>
               </div>
             </el-option>
           </el-select>
@@ -545,6 +550,41 @@ onMounted(() => {
   padding: 20px;
   background: transparent;
   min-height: 100vh;
+}
+
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-info {
+  display: flex;
+  align-items: center;
+}
+
+.header-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--text);
+}
+
+.header-tag {
+  margin-left: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--panel-strong);
+  padding: 2px 8px;
+  border-radius: var(--r-tag);
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-form {
+  margin-bottom: 16px;
 }
 
 .table-toolbar {
@@ -618,27 +658,27 @@ onMounted(() => {
   color: #adb5bd;
 }
 
-/* 教师下拉选项样式 */
-.teacher-option {
-  display: flex;
-  flex-direction: column;
-  padding: 4px 0;
-  line-height: 1.4;
+/* 教师下拉列表加宽 */
+.teacher-select-dropdown {
+  min-width: 280px !important;
 }
 
-.teacher-name {
+/* 教师下拉选项样式 - 单行显示 */
+.teacher-option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+  gap: 12px;
+}
+
+.teacher-option-row .teacher-name {
   font-weight: 500;
   color: #303133;
-  display: flex;
-  align-items: center;
-}
-
-.teacher-meta {
-  font-size: 12px;
-  color: #909399;
-  display: flex;
-  align-items: center;
-  margin-top: 2px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 已选教师提示 */

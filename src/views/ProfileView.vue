@@ -13,7 +13,7 @@ import {ElMessage, ElNotification} from "element-plus";
 
 // ---- 常量 ----
 /** 头像对象存储基础路径 */
-const AVATAR_BASE_URL = "http://127.0.0.1:9000/pms-bucket/";
+const AVATAR_BASE_URL = (import.meta.env.VITE_MINIO_BASE_URL || "http://127.0.0.1:9000/pms-bucket") + "/";
 /** 头像最大文件大小 2MB */
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
 /** 允许上传的头像格式 */

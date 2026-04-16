@@ -10,7 +10,7 @@ import {timeUtil} from '../utils/TimeFormatUtil.js';
 
 // ---- 常量 ----
 /** 头像对象存储基础路径 */
-const AVATAR_BASE_URL = "http://127.0.0.1:9000/pms-bucket/";
+const AVATAR_BASE_URL = (import.meta.env.VITE_MINIO_BASE_URL || "http://127.0.0.1:9000/pms-bucket") + "/";
 
 const route = useRoute();
 const router = useRouter();

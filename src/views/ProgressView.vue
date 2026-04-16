@@ -232,7 +232,7 @@ onMounted(loadData);
         <div class="flex-between">
           <div class="header-info">
             <span class="header-title">课题进度动态</span>
-            <span class="header-tag">{{ state.total }} Records</span>
+            <span class="header-tag">{{ state.total }} 条</span>
           </div>
           <div class="header-actions">
             <el-button v-if="isStudent" type="primary" :icon="Plus" @click="openEdit()">上报进度</el-button>
@@ -241,27 +241,25 @@ onMounted(loadData);
         </div>
       </template>
 
-        <div class="filter-section">
-        <el-form :inline="true" size="default">
-          <el-form-item>
-            <el-input v-model="query.title" placeholder="按阶段标题搜索..." prefix-icon="Search" clearable/>
-          </el-form-item>
-          <el-form-item v-if="!isStudent">
-            <el-select v-model="query.pId" placeholder="按课题筛选" clearable style="width: 180px" filterable>
-              <el-option v-for="item in state.projectOptions" :key="item.id" :label="item.title" :value="item.id"/>
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-select v-model="query.status" placeholder="所有状态" clearable style="width: 140px">
-              <el-option v-for="opt in PROGRESS_STATUS_OPTIONS" :key="opt.value" :label="opt.label" :value="opt.value"/>
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="handleSearch">筛选</el-button>
-            <el-button @click="handleReset">重置</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
+        <el-form :inline="true" size="default" class="filter-form">
+        <el-form-item>
+          <el-input v-model="query.title" placeholder="按阶段标题搜索..." prefix-icon="Search" clearable/>
+        </el-form-item>
+        <el-form-item v-if="!isStudent">
+          <el-select v-model="query.pId" placeholder="按课题筛选" clearable style="width: 180px" filterable>
+            <el-option v-for="item in state.projectOptions" :key="item.id" :label="item.title" :value="item.id"/>
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-select v-model="query.status" placeholder="所有状态" clearable style="width: 140px">
+            <el-option v-for="opt in PROGRESS_STATUS_OPTIONS" :key="opt.value" :label="opt.label" :value="opt.value"/>
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch">筛选</el-button>
+          <el-button @click="handleReset">重置</el-button>
+        </el-form-item>
+      </el-form>
 
       <el-table :data="enrichedRows" v-loading="state.loading" border stripe>
         <el-table-column label="课题与进展" min-width="240">
@@ -482,11 +480,8 @@ onMounted(loadData);
   border-radius: var(--r-tag);
 }
 
-.filter-section {
-  margin-bottom: 18px;
-  padding: 10px;
-  background: var(--panel-strong);
-  border-radius: var(--r-tag);
+.filter-form {
+  margin-bottom: 16px;
 }
 
 /* 表格内项目信息 */

@@ -3,7 +3,7 @@ import {computed, nextTick, onMounted, onBeforeUnmount, ref} from "vue";
 import {useAuthStore} from "../stores/auth";
 import {friendApi, chatApi, chatDetailedApi, userApi} from "../api/modules";
 import {ElMessage, ElMessageBox} from "element-plus";
-import {ChatLineRound, Search, User, UserFilled, More, Delete, ArrowDown} from "@element-plus/icons-vue";
+import {ChatLineRound, Search, User, UserFilled, More, Delete, ArrowDown, Check, Close} from "@element-plus/icons-vue";
 
 // ========================= 表情包 =========================
 const EMOJI_LIST = [
@@ -63,7 +63,7 @@ let wsManualClose = false;
 const onlineUserIds = ref(new Set());
 
 // ========================= 工具函数 =========================
-const avatarBase = "http://127.0.0.1:9000/pms-bucket/";
+const avatarBase = (import.meta.env.VITE_MINIO_BASE_URL || "http://127.0.0.1:9000/pms-bucket") + "/";
 
 function getAvatar(avatar) {
   if (!avatar) return "https://cube.elemecdn.com/9/c2/f0ee8a3c7c9638a54940382568c9dpng.png";
@@ -435,11 +435,7 @@ function withdrawMessage(msg) {
       code: 102,
       content: JSON.stringify({id: msg.id})
     }));
-    // 乐观更新
-    const idx = messages.value.indexOf(msg);
-    if (idx !== -1) {
-      messages.value.splice(idx, 1, {...msg, withdraw: 1});
-    }
+    // 注意：不乐观更新，等后端广播"撤回"事件后再更新
   });
 }
 
@@ -482,7 +478,8 @@ async function deleteChat(chatItem, event) {
 // ========================= WebSocket =========================
 function connectWs() {
   // 新协议：token 放在第一帧 content 里，不再放 URL 参数
-  ws = new WebSocket("ws://127.0.0.1:9091/im");
+  const wsUrl = import.meta.env.VITE_WS_URL ? `${import.meta.env.VITE_WS_URL}/im` : "ws://127.0.0.1:9091/im";
+  ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
     wsConnected.value = true;
@@ -735,7 +732,7 @@ onBeforeUnmount(() => {
                   <template v-else-if="getMsgType(item.detail?.content) === 'file'">{{ parseFileInfo(item.detail.content).name }}</template>
                   <template v-else>{{ item.detail?.content || "暂无消息" }}</template>
                 </span>
-                <el-badge v-if="item.chat?.unread > 0" :value="item.chat.unread" :max="99" class="unread-badge"/>
+                <el-badge v-if="item.chat?.unread > 0 && item.detail?.userId !== authStore.userId" :value="item.chat.unread" :max="99" class="unread-badge"/>
               </div>
             </div>
             <el-button
@@ -781,7 +778,15 @@ onBeforeUnmount(() => {
                 {{ friend.role === 0 ? '学生' : friend.role === 1 ? '指导教师' : '管理员' }}
               </div>
             </div>
-            <el-button type="danger" link size="small" @click.stop="handleRemoveFriend(friend, $event)">删除</el-button>
+            <el-button 
+              class="delete-friend-btn" 
+              circle 
+              size="small" 
+              @click.stop="handleRemoveFriend(friend, $event)"
+              title="删除好友"
+            >
+              <el-icon><Delete/></el-icon>
+            </el-button>
           </div>
         </div>
       </el-scrollbar>
@@ -796,8 +801,22 @@ onBeforeUnmount(() => {
             <div class="req-msg">{{ req.message || '请求添加你为好友' }}</div>
           </div>
           <div class="req-actions">
-            <el-button type="primary" size="small" @click="handleAccept(req)">接受</el-button>
-            <el-button type="danger" size="small" @click="handleReject(req)">拒绝</el-button>
+            <el-button 
+              class="req-btn req-accept" 
+              size="small" 
+              @click="handleAccept(req)"
+              title="接受"
+            >
+              <el-icon><Check/></el-icon>
+            </el-button>
+            <el-button 
+              class="req-btn req-reject" 
+              size="small" 
+              @click="handleReject(req)"
+              title="拒绝"
+            >
+              <el-icon><Close/></el-icon>
+            </el-button>
           </div>
         </div>
       </el-scrollbar>
@@ -819,6 +838,12 @@ onBeforeUnmount(() => {
       <template v-else>
         <!-- 聊天头部 -->
         <div class="chat-header">
+          <!-- 手机端返回按钮 -->
+          <button class="mobile-back-btn" @click="activeFriend = null">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
           <div class="avatar-wrap">
             <el-avatar :size="36" :src="getAvatar(activeFriend.avatar)"/>
             <span :class="['online-dot-sm', onlineUserIds.has(activeFriend.friendId) ? 'is-online' : 'is-offline']"/>
@@ -1281,16 +1306,23 @@ onBeforeUnmount(() => {
 }
 
 .online-label {
-  font-size: 10px;
+  font-size: 11px;
   flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
 }
 
 .online-label.online {
-  color: #67c23a;
+  color: #fff;
+  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
+  box-shadow: 0 2px 6px rgba(103, 194, 58, 0.3);
 }
 
 .online-label.offline {
-  color: var(--muted);
+  color: #909399;
+  background: #f5f7fa;
+  border: 1px solid #e4e7ed;
 }
 
 .request-item {
@@ -1316,9 +1348,62 @@ onBeforeUnmount(() => {
 
 .req-actions {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  gap: 8px;
   flex-shrink: 0;
+}
+
+/* 好友申请按钮 */
+.req-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  padding: 0;
+  border: none;
+  transition: all 0.2s;
+}
+
+.req-accept {
+  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(103, 194, 58, 0.35);
+}
+
+.req-accept:hover {
+  background: linear-gradient(135deg, #5daf34 0%, #77c056 100%);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(103, 194, 58, 0.45);
+}
+
+.req-reject {
+  background: #f5f7fa;
+  color: #909399;
+  border: 1px solid #dcdfe6;
+}
+
+.req-reject:hover {
+  background: #fef0f0;
+  color: #f56c6c;
+  border-color: #fde2e2;
+  transform: scale(1.05);
+}
+
+/* 删除好友按钮 */
+.delete-friend-btn {
+  opacity: 0;
+  transition: all 0.2s;
+  color: #c0c4cc;
+  background: transparent;
+  border: none;
+}
+
+.friend-item:hover .delete-friend-btn {
+  opacity: 1;
+}
+
+.delete-friend-btn:hover {
+  color: #f56c6c;
+  background: #fef0f0;
+  transform: scale(1.1);
 }
 
 /* ===== 右侧聊天区 ===== */
@@ -1769,4 +1854,106 @@ onBeforeUnmount(() => {
   color: var(--muted);
 }
 .message-row.mine .file-dl-hint { color: rgba(255,255,255,0.7); }
+
+/* 手机端返回按钮 - PC端默认隐藏 */
+.mobile-back-btn {
+  display: none !important;
+}
+
+/* ==================== 手机端适配 ==================== */
+@media (max-width: 768px) {
+  .chat-container {
+    height: calc(100vh - 120px);
+    border-radius: 12px;
+  }
+
+  .chat-sidebar {
+    width: 100%;
+    border-right: none;
+  }
+
+  .chat-main {
+    display: none;
+  }
+
+  .chat-main.active-chat {
+    display: flex;
+    width: 100%;
+  }
+
+  .chat-sidebar.hidden-on-mobile {
+    display: none;
+  }
+
+  .sidebar-header {
+    padding: 12px;
+  }
+
+  .chat-header {
+    padding: 10px 14px;
+  }
+
+  .messages-area {
+    padding: 12px 14px;
+  }
+
+  .msg-image {
+    max-width: 180px;
+    max-height: 150px;
+  }
+
+  .input-area :deep(.el-textarea__inner) {
+    padding: 12px 14px 6px;
+    font-size: 15px;
+  }
+
+  .chat-placeholder {
+    font-size: 13px;
+  }
+
+  .image-preview-overlay {
+    padding: 0;
+    align-items: center;
+  }
+
+  .image-preview-overlay img {
+    max-width: 95vw;
+    max-height: 80vh;
+    border-radius: 8px;
+  }
+
+  .image-preview-close {
+    top: 12px;
+    right: 12px;
+  }
+
+  /* 手机端返回按钮 */
+  .mobile-back-btn {
+    display: flex;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(174, 93, 48, 0.1);
+    color: var(--brand);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+
+  .mobile-back-btn:hover {
+    background: rgba(174, 93, 48, 0.2);
+  }
+
+  .mobile-back-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .chat-header {
+    gap: 10px;
+  }
+}
 </style>

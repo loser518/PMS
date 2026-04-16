@@ -1,9 +1,15 @@
 <script setup>
-import {onMounted, reactive, ref} from "vue";
+import {onMounted, reactive, ref, computed} from "vue";
 import {projectTypeApi} from "../api/modules";
 import PaginationBar from "../components/PaginationBar.vue";
 import {ElMessage, ElMessageBox} from "element-plus";
 import {Plus} from "@element-plus/icons-vue";
+import {useAuthStore} from "../stores/auth";
+
+const authStore = useAuthStore();
+
+// 只有教师(1)和管理员(2)可以管理，学生(0)只能查看
+const canManage = computed(() => authStore.role === 1 || authStore.role === 2);
 
 // ---- 查询条件 ----
 const query = reactive({
@@ -116,31 +122,29 @@ onMounted(loadData);
       <template #header>
         <div class="flex-between">
           <div class="header-info">
-            <span class="header-title">课题类型管理</span>
+            <span class="header-title">课题类型{{ canManage ? '管理' : '列表' }}</span>
             <span class="header-tag">{{ state.total }} 条</span>
           </div>
-          <el-button type="primary" :icon="Plus" @click="openAdd">新增类型</el-button>
+          <el-button v-if="canManage" type="primary" :icon="Plus" @click="openAdd">新增类型</el-button>
         </div>
       </template>
 
       <!-- 搜索栏 -->
-      <div class="filter-section">
-        <el-form :inline="true" size="default">
-          <el-form-item>
-            <el-input v-model="query.name" placeholder="按名称搜索..." prefix-icon="Search" clearable style="width:200px"/>
-          </el-form-item>
-          <el-form-item>
-            <el-select v-model="query.status" placeholder="全部状态" clearable style="width:130px">
-              <el-option label="启用" :value="1"/>
-              <el-option label="禁用" :value="0"/>
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="handleSearch">搜索</el-button>
-            <el-button @click="handleReset">重置</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
+      <el-form :inline="true" size="default" class="filter-form">
+        <el-form-item>
+          <el-input v-model="query.name" placeholder="按名称搜索..." prefix-icon="Search" clearable style="width:200px"/>
+        </el-form-item>
+        <el-form-item>
+          <el-select v-model="query.status" placeholder="全部状态" clearable style="width:130px">
+            <el-option label="启用" :value="1"/>
+            <el-option label="禁用" :value="0"/>
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch">搜索</el-button>
+          <el-button @click="handleReset">重置</el-button>
+        </el-form-item>
+      </el-form>
 
       <!-- 表格 -->
       <el-table :data="state.rows" v-loading="state.loading" border stripe>
@@ -160,7 +164,7 @@ onMounted(loadData);
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="175" align="center"/>
-        <el-table-column label="操作" width="180" align="center" fixed="right">
+        <el-table-column v-if="canManage" label="操作" width="180" align="center" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="openEdit(row)">编辑</el-button>
             <el-button :type="row.status === 1 ? 'warning' : 'success'" link @click="toggleStatus(row)">
@@ -238,11 +242,8 @@ onMounted(loadData);
   border-radius: var(--r-tag);
 }
 
-.filter-section {
-  margin-bottom: 18px;
-  padding: 10px;
-  background: var(--panel-strong);
-  border-radius: var(--r-tag);
+.filter-form {
+  margin-bottom: 16px;
 }
 
 .text-muted {

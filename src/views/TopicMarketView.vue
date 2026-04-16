@@ -300,7 +300,7 @@ onMounted(loadData);
 .page-title {
   font-size: 22px;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--text);
   margin: 0 0 4px;
 }
 
@@ -367,7 +367,7 @@ onMounted(loadData);
 .topic-title {
   font-size: 16px;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--text);
   margin: 0;
   line-height: 1.4;
   flex: 1;

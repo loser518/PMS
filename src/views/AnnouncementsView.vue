@@ -51,12 +51,28 @@ const selectedItem = ref(null);
 
 // --- 权限与映射 ---
 const isAdmin = computed(() => authStore.role === 2);
+const isTeacher = computed(() => authStore.role === 1);
+const isStudent = computed(() => authStore.role === 0);
 const categoryMap = computed(() => Object.fromEntries(categories.value.map((item) => [item.id, item])));
 
 // --- 数据列表逻辑 ---
 const filteredList = computed(() => {
   let list = [...page.value.list];
   if (!isAdmin.value) list = list.filter(item => item.status === 1);
+
+  // 根据用户角色过滤公告
+  if (!isAdmin.value) {
+    list = list.filter(item => {
+      const targetRole = item.targetRole;
+      // ALL 全部可见
+      if (targetRole === 'ALL') return true;
+      // STUDENT 仅学生可见
+      if (targetRole === 'STUDENT' && isStudent.value) return true;
+      // TEACHER 仅教师可见
+      if (targetRole === 'TEACHER' && isTeacher.value) return true;
+      return false;
+    });
+  }
 
   list.sort((a, b) => {
     if ((a.priority === 2) !== (b.priority === 2)) return a.priority === 2 ? -1 : 1;
@@ -302,7 +318,7 @@ onMounted(() => {
 }
 
 .filter-card {
-  margin: 20px 0;
+  margin-bottom: 16px;
   border-radius: var(--r-card);
 }
 

@@ -147,8 +147,22 @@ onMounted(() => {
 <template>
   <div class="app-container">
 
-    <el-card shadow="never" class="search-wrapper">
-      <el-form :inline="true" :model="query">
+    <el-card shadow="never" class="main-card">
+      <template #header>
+        <div class="flex-between">
+          <div class="header-info">
+            <span class="header-title">学生档案管理</span>
+            <span class="header-tag">{{ page.total }} 条</span>
+          </div>
+          <div class="header-actions">
+            <el-button type="success" :icon="Plus" @click="modal.create = true; loadCaptcha()">手动录入学生</el-button>
+            <el-button :icon="Refresh" @click="loadData">刷新</el-button>
+          </div>
+        </div>
+      </template>
+
+      <!-- 搜索栏 -->
+      <el-form :inline="true" :model="query" class="filter-form">
         <el-form-item label="学号">
           <el-input v-model="query.username" placeholder="请输入学号" clearable @keyup.enter="loadData"/>
         </el-form-item>
@@ -165,16 +179,13 @@ onMounted(() => {
           <el-button :icon="Refresh" @click="resetQuery">重置</el-button>
         </el-form-item>
       </el-form>
-    </el-card>
 
-    <el-card shadow="never" class="table-wrapper">
+      <!-- 工具栏 -->
       <div class="table-toolbar">
         <div class="toolbar-left">
-          <el-button type="success" :icon="Plus" @click="modal.create = true; loadCaptcha()">手动录入学生</el-button>
           <el-button type="warning" :icon="Upload" :loading="excelLoading" @click="triggerImport">批量导入</el-button>
           <el-button type="primary" :icon="Download" :loading="excelLoading" @click="handleExport">导出 Excel</el-button>
         </div>
-        <span class="table-tips">当前库中共 {{ page.total }} 条档案</span>
         <!-- 隐藏的文件选择框，只接受 .xlsx .xls -->
         <input ref="importFileRef" type="file" accept=".xlsx,.xls" style="display:none" @change="handleImportFile"/>
       </div>
@@ -303,20 +314,50 @@ onMounted(() => {
   min-height: 100vh;
 }
 
-.page-header {
+.main-card {
+  border-radius: var(--r-card);
+}
+
+.flex-between {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
 }
 
-.search-wrapper {
+.header-info {
+  display: flex;
+  align-items: center;
+}
+
+.header-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--text);
+}
+
+.header-tag {
+  margin-left: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--panel-strong);
+  padding: 2px 8px;
+  border-radius: var(--r-tag);
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-form {
   margin-bottom: 16px;
-  border: none;
 }
 
-.table-wrapper {
-  border: none;
+.table-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
 }
 
 .table-toolbar {

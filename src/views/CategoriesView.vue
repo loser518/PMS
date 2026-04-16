@@ -79,7 +79,10 @@ onMounted(loadData);
     <el-card shadow="never" class="main-card">
       <template #header>
         <div class="flex-between">
-          <span class="title">公告分类管理</span>
+          <div class="header-info">
+            <span class="header-title">公告分类管理</span>
+            <span class="header-tag">{{ page.total }} 条</span>
+          </div>
           <div class="actions">
             <el-button @click="loadData">刷新</el-button>
             <el-button type="primary" @click="openEdit()">+ 新增分类</el-button>
@@ -87,22 +90,22 @@ onMounted(loadData);
         </div>
       </template>
 
-      <div class="filter-bar">
-        <el-form :inline="true" size="default">
-          <el-form-item label="名称">
-            <el-input v-model="query.name" placeholder="搜索..." clearable/>
-          </el-form-item>
-          <el-form-item label="状态">
-            <el-select v-model="query.isActive" placeholder="全部" style="width: 100px">
-              <el-option label="全部" value=""/>
-              <el-option label="启用" :value="1"/>
-              <el-option label="停用" :value="0"/>
-            </el-select>
-          </el-form-item>
+      <el-form :inline="true" size="default" class="filter-form">
+        <el-form-item label="名称">
+          <el-input v-model="query.name" placeholder="搜索..." clearable/>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="query.isActive" placeholder="全部" style="width: 100px">
+            <el-option label="全部" value=""/>
+            <el-option label="启用" :value="1"/>
+            <el-option label="停用" :value="0"/>
+          </el-select>
+        </el-form-item>
+        <el-form-item>
           <el-button type="primary" @click="search">查询</el-button>
           <el-button @click="resetQuery">重置</el-button>
-        </el-form>
-      </div>
+        </el-form-item>
+      </el-form>
 
       <el-table :data="page.list" v-loading="loading" border stripe>
         <el-table-column prop="id" label="ID" width="80" align="center"/>
@@ -188,17 +191,28 @@ onMounted(loadData);
   align-items: center;
 }
 
-.title {
-  font-size: 18px;
-  font-weight: bold;
+.header-info {
+  display: flex;
+  align-items: center;
 }
 
-.filter-bar {
-  background: var(--panel);
-  padding: 15px;
-  margin-bottom: 20px;
+.header-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--text);
+}
+
+.header-tag {
+  margin-left: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--panel-strong);
+  padding: 2px 8px;
   border-radius: var(--r-tag);
-  border: 1px solid #ebeef5;
+}
+
+.filter-form {
+  margin-bottom: 16px;
 }
 
 .pagination-wrap {

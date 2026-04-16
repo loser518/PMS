@@ -436,7 +436,9 @@ watch(darkMode, () => {
         </el-col>
         <el-col :xs="12" :sm="6">
           <div class="stat-mini">
-            <div class="stat-mini-val">{{ state.myStudentProjects.total }}</div>
+            <div class="stat-mini-val">{{
+                authStore.userInfo?.profile?.currentStudentCount ?? 0
+              }}</div>
             <div class="stat-mini-label">我的学生</div>
           </div>
         </el-col>

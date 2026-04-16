@@ -621,6 +621,261 @@ a {
     }
 }
 
+/* ==================== 手机端 (768px 以下) ==================== */
+/* 强制表格横向滚动（手机端） */
+@media (max-width: 768px) {
+    .el-table {
+        overflow-x: auto !important;
+        display: block;
+    }
+
+    .el-table__inner-wrapper {
+        overflow-x: auto !important;
+        display: block;
+        width: max-content !important;
+        min-width: 100%;
+    }
+
+    .el-table__body-wrapper {
+        overflow-x: auto !important;
+    }
+
+    .el-table__body {
+        width: max-content !important;
+    }
+
+    .el-table .el-table__header {
+        width: max-content !important;
+    }
+
+    /* 表格横向滚动条隐藏 */
+    .el-table__inner-wrapper::-webkit-scrollbar,
+    .el-table__body-wrapper::-webkit-scrollbar {
+        height: 0;
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    /* 全局字体放大 */
+    :root {
+        font-size: 15px;
+    }
+
+    html.dark {
+        font-size: 15px;
+    }
+
+    /* 调整顶栏 */
+    .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 16px 18px;
+    }
+
+    .topbar__title {
+        font-size: 18px;
+    }
+
+    .topbar__actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    /* 统计卡片 */
+    .stat-card {
+        padding: 16px;
+    }
+
+    .stat-card__value {
+        font-size: 28px;
+        margin: 8px 0 4px;
+    }
+
+    /* 面板 */
+    .panel {
+        padding: 16px;
+    }
+
+    .panel__header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .panel__title {
+        font-size: 17px;
+    }
+
+    /* 表格横向滚动 */
+    .el-table {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .el-table__body-wrapper {
+        overflow-x: auto !important;
+    }
+
+    .el-table--scrollable-x .el-table__body-wrapper {
+        overflow-x: auto;
+    }
+
+    /* 隐藏不重要的表格列（通过class） */
+    .hide-mobile {
+        display: none !important;
+    }
+
+    /* 表格单元格字体 */
+    .el-table td, .el-table th {
+        font-size: 13px;
+        padding: 10px 8px;
+    }
+
+    .el-table th {
+        font-size: 12px;
+        white-space: nowrap;
+    }
+
+    /* 分页器适配 */
+    .pagination {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .pagination__info, .pagination__actions {
+        flex-wrap: wrap;
+    }
+
+    /* 表单 */
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    /* 标签 */
+    .tag {
+        font-size: 12px;
+        padding: 3px 8px;
+    }
+
+    /* 操作按钮 */
+    .actions {
+        gap: 6px;
+    }
+
+    /* 模态框 */
+    .modal-mask {
+        padding: 10px;
+    }
+
+    .modal-card {
+        border-radius: var(--r-card);
+        max-height: 85vh;
+    }
+
+    .modal-card__body {
+        padding: 16px;
+    }
+
+    /* 空状态 */
+    .empty::before {
+        width: 72px;
+        height: 72px;
+    }
+
+    .empty {
+        font-size: 14px;
+    }
+
+    /* 列表卡片 */
+    .list-card__item {
+        padding: 12px 14px;
+    }
+
+    /* KPI */
+    .kpi {
+        padding: 12px 14px;
+    }
+
+    .kpi strong {
+        font-size: 18px;
+    }
+
+    /* 登录页 */
+    .auth {
+        grid-template-columns: 1fr;
+    }
+
+    .auth__hero {
+        display: none;
+    }
+
+    .auth__card {
+        width: 100%;
+        padding: 24px 20px;
+        border-radius: var(--r-lg);
+    }
+
+    /* 输入框 */
+    .field input,
+    .field select,
+    .field textarea {
+        font-size: 15px;
+        padding: 10px 12px;
+    }
+
+    /* 按钮 */
+    .primary-button,
+    .ghost-button,
+    .danger-button {
+        padding: 10px 14px;
+        font-size: 14px;
+        width: 100%;
+    }
+
+    .el-button {
+        font-size: 14px;
+    }
+
+    /* Toast 提示 */
+    .toast {
+        left: 10px;
+        right: 10px;
+        min-width: unset;
+        max-width: unset;
+    }
+
+    /* 滚动条隐藏 */
+    ::-webkit-scrollbar {
+        display: none;
+    }
+
+    * {
+        scrollbar-width: none;
+    }
+
+    /* 评论样式 */
+    .comment {
+        padding-left: 12px;
+    }
+
+    /* 分割布局 */
+    .split {
+        grid-template-columns: 1fr;
+    }
+
+    /* 暗色表格 */
+    html.dark .el-table {
+        --el-table-bg-color: #1e1e22;
+        --el-table-tr-bg-color: #1e1e22;
+        --el-table-header-bg-color: #252528;
+        --el-table-row-hover-bg-color: rgba(212, 120, 74, 0.1);
+    }
+}
+
 .user-menu {
     position: relative;
 }

@@ -1,8 +1,14 @@
 ﻿import axios from "axios";
 import {ElNotification} from "element-plus";
 
+// 开发环境：使用 Vite 代理（/api → localhost:9090）
+// 生产环境：从环境变量读取后端地址
+const baseURL = import.meta.env.VITE_API_BASE_URL
+    ? `${import.meta.env.VITE_API_BASE_URL}/api`
+    : "/api";
+
 const http = axios.create({
-    baseURL: "/api",
+    baseURL,
     timeout: 15000
 });
 
@@ -10,6 +16,11 @@ http.interceptors.request.use((config) => {
     const token = localStorage.getItem("pms_token");
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+    }
+    // 若用户设置了个人 API Key，所有 AI 相关请求自动附上
+    const apiKey = localStorage.getItem("pms-api-key");
+    if (apiKey && config.url && config.url.includes("/ai/")) {
+        config.headers["X-API-Key"] = apiKey;
     }
     return config;
 });

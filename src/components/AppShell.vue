@@ -97,7 +97,7 @@ let notifyWs = null;
 function connectNotifyWs() {
   if (!authStore.token) return;
   // 注意：WS 地址与后端 IMServer 的 ws.port 一致
-  const wsUrl = `ws://127.0.0.1:9091/im`;
+  const wsUrl = import.meta.env.VITE_WS_URL ? `${import.meta.env.VITE_WS_URL}/im` : `ws://127.0.0.1:9091/im`;
   notifyWs = new WebSocket(wsUrl);
 
   notifyWs.onopen = () => {
@@ -158,9 +158,12 @@ function disconnectNotifyWs() {
   }
 }
 
-const avatarPath = 'http://127.0.0.1:9000/pms-bucket/';
+const avatarPath = (import.meta.env.VITE_MINIO_BASE_URL || 'http://127.0.0.1:9000/pms-bucket') + '/';
 const isCollapse = ref(false);
 const screenWidth = ref(window.innerWidth);
+// 手机端侧边栏遮罩层
+const showMobileOverlay = ref(false);
+const isMobile = computed(() => screenWidth.value < 768);
 
 // -------- 明暗主题切换 --------
 const isDark = ref(localStorage.getItem('pms-theme') === 'dark');
@@ -194,7 +197,17 @@ const handleResize = () => {
 };
 
 const toggleSidebar = () => {
-  isCollapse.value = !isCollapse.value;
+  if (isMobile.value) {
+    // 手机端：切换侧边栏显示/隐藏
+    showMobileOverlay.value = !showMobileOverlay.value;
+  } else {
+    // PC端：切换折叠/展开
+    isCollapse.value = !isCollapse.value;
+  }
+};
+
+const closeMobileSidebar = () => {
+  showMobileOverlay.value = false;
 };
 
 const menus = computed(() => [
@@ -282,9 +295,26 @@ const handleLogout = async () => {
 
 let timer = null;
 let notifyTimer = null;
+
+// ── 同步AI头像更新 ──
+function handleAvatarUpdate(event) {
+  const newUrl = event.detail || localStorage.getItem(AI_AVATAR_KEY);
+  if (newUrl && newUrl !== aiAvatarUrl.value) {
+    aiAvatarUrl.value = newUrl;
+  }
+}
+
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown);
   window.addEventListener('resize', handleResize);
+  // 监听AI头像更新事件
+  window.addEventListener('ai-avatar-updated', handleAvatarUpdate);
+  // 监听 localStorage 变化（多标签页情况）
+  window.addEventListener('storage', (e) => {
+    if (e.key === AI_AVATAR_KEY) {
+      aiAvatarUrl.value = e.newValue || defaultAiAvatar;
+    }
+  });
   handleResize();
   timer = setInterval(() => {
     currentTime.value = new Date();
@@ -301,6 +331,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown);
   window.removeEventListener('resize', handleResize);
+  window.removeEventListener('ai-avatar-updated', handleAvatarUpdate);
   clearInterval(timer);
   clearInterval(notifyTimer);
   disconnectNotifyWs();
@@ -322,6 +353,11 @@ let floatEventSource = null;
 
 const FLOAT_SESSION_KEY = "pms_float_ai_session";
 const FLOAT_WELCOME = "👋 你好！我是智能客服**小P**，有什么可以帮到你？";
+
+// AI头像URL（与AiServiceView.vue共用）
+const AI_AVATAR_KEY = 'pms_ai_avatar_url';
+const defaultAiAvatar = 'https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/ogAiAnIdwAA10dMhAEO6baDGPFw1lX2BjpaPi~tplv-dy-aweme-images:q75.webp?biz_tag=aweme_images&from=327834062&lk3s=138a59ce&s=PackSourceEnum_SEARCH&sc=image&se=false&x-expires=1776286800&x-signature=%2B1sBLX32yx4qb4DApo2Tz%2BvSS3s%3D';
+const aiAvatarUrl = ref(localStorage.getItem(AI_AVATAR_KEY) || defaultAiAvatar);
 
 function getFloatSession() {
   let sid = sessionStorage.getItem(FLOAT_SESSION_KEY);
@@ -439,11 +475,25 @@ function goToFullAiService() {
 
 <template>
   <el-container class="app-shell">
-    <el-aside :width="isCollapse ? '90px' : '260px'" class="glass-aside">
+    <!-- 手机端遮罩层 -->
+    <transition name="fade">
+      <div v-if="showMobileOverlay" class="mobile-overlay" @click="closeMobileSidebar"></div>
+    </transition>
+
+    <el-aside :width="isCollapse ? '90px' : '260px'" class="glass-aside" :class="{ 'mobile-open': showMobileOverlay }">
+<!--      &lt;!&ndash; 手机端关闭按钮 &ndash;&gt;-->
+<!--      <button class="mobile-close-btn" @click="closeMobileSidebar">-->
+<!--        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">-->
+<!--          <line x1="18" y1="6" x2="6" y2="18"/>-->
+<!--          <line x1="6" y1="6" x2="18" y2="18"/>-->
+<!--        </svg>-->
+<!--      </button>-->
+
       <!-- 顶部品牌区域 - 固定 -->
       <div class="brand-box">
         <div class="brand-logo">
-          <div v-if="isCollapse" class="mini-logo">P</div>
+          <div v-if="isCollapse && !isMobile" class="mini-logo">P</div>
+          <div v-else-if="isMobile && !showMobileOverlay" class="mini-logo">P</div>
           <span v-else class="logo-text">PMS 课题管理</span>
         </div>
       </div>
@@ -458,7 +508,7 @@ function goToFullAiService() {
               :collapse="isCollapse"
               :collapse-transition="false"
           >
-            <el-menu-item v-for="item in menus" :key="item.path" :index="item.path">
+            <el-menu-item v-for="item in menus" :key="item.path" :index="item.path" @click="isMobile && closeMobileSidebar()">
               <el-icon class="menu-icon">
                 <component :is="Icons[item.icon]"/>
               </el-icon>
@@ -531,22 +581,15 @@ function goToFullAiService() {
 
         <div class="header-right">
 
-          <!-- 明暗主题切换 -->
-          <el-tooltip :content="isDark ? '切换为亮色' : '切换为暗色'" placement="bottom">
-            <el-button circle @click="toggleTheme" class="notify-btn">
+          <!-- 主题切换 -->
+          <el-tooltip :content="isDark ? '浅色模式' : '深色模式'" placement="bottom">
+            <el-button circle class="notify-btn" @click="toggleTheme">
               <el-icon>
                 <component :is="isDark ? Icons.Sunny : Icons.Moon"/>
               </el-icon>
             </el-button>
           </el-tooltip>
 
-          <el-tooltip content="AI客服" :max="99" class="notify-badge">
-            <el-button  circle @click="router.push('/ai-service')" class="notify-btn">
-              <el-icon>
-                <component :is="Icons.Service"/>
-              </el-icon>
-            </el-button>
-          </el-tooltip>
           <!-- 通知铃铛 -->
           <el-tooltip content="消息通知">
             <el-badge :value="unreadCount" :max="99" :hidden="unreadCount === 0" class="notify-badge">
@@ -615,7 +658,7 @@ function goToFullAiService() {
         <div class="float-header">
           <div class="float-avatar"><el-avatar
               :size="38"
-              src="https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/ogAiAnIdwAA10dMhAEO6baDGPFw1lX2BjpaPi~tplv-dy-aweme-images:q75.webp?biz_tag=aweme_images&from=327834062&lk3s=138a59ce&s=PackSourceEnum_SEARCH&sc=image&se=false&x-expires=1776286800&x-signature=%2B1sBLX32yx4qb4DApo2Tz%2BvSS3s%3D"
+              :src="aiAvatarUrl"
           >
           </el-avatar></div>
           <div class="float-header-info">
@@ -648,7 +691,7 @@ function goToFullAiService() {
           >
             <div v-if="msg.role === 'assistant'" class="float-msg-avatar"><el-avatar
                 :size="35"
-                src="https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/ogAiAnIdwAA10dMhAEO6baDGPFw1lX2BjpaPi~tplv-dy-aweme-images:q75.webp?biz_tag=aweme_images&from=327834062&lk3s=138a59ce&s=PackSourceEnum_SEARCH&sc=image&se=false&x-expires=1776286800&x-signature=%2B1sBLX32yx4qb4DApo2Tz%2BvSS3s%3D"
+                :src="aiAvatarUrl"
             >
             </el-avatar></div>
             <div
@@ -657,7 +700,7 @@ function goToFullAiService() {
                 v-html="msg.role === 'assistant' ? (floatRenderMd(msg.content) || '<span class=\'typing-cursor\'></span>') : msg.content"
             ></div>
             <div v-if="msg.role === 'user'" class="float-user-avatar">
-              <el-avatar :size="28" :src="'http://127.0.0.1:9000/pms-bucket/' + authStore.userInfo?.user?.avatar">
+              <el-avatar :size="28" :src="avatarPath + authStore.userInfo?.user?.avatar">
                 <img src="https://cube.elemecdn.com/9/c2/f0ee8a3c7c9638a54940382568c9dpng.png"/>
               </el-avatar>
             </div>
@@ -1027,6 +1070,7 @@ function goToFullAiService() {
 
   .glass-header {
     padding: 0 12px;
+    height: 60px !important;
   }
 
   .hidden-mobile {
@@ -1035,8 +1079,68 @@ function goToFullAiService() {
 
   .glass-aside {
     position: fixed;
-    height: calc(100vh - 16px);
+    height: 100vh;
+    top: 0;
+    left: 0;
+    z-index: 2001;
+    border-radius: 0;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding-top: 0;
+  }
+
+  .glass-aside.mobile-open {
+    transform: translateX(0);
+  }
+
+  /* 手机端遮罩层 */
+  .mobile-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
     z-index: 2000;
+    backdrop-filter: blur(2px);
+  }
+
+  .fade-enter-active, .fade-leave-active {
+    transition: opacity 0.25s;
+  }
+  .fade-enter-from, .fade-leave-to {
+    opacity: 0;
+  }
+
+  /* 手机端关闭按钮 */
+  .mobile-close-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    transition: background 0.15s;
+  }
+
+  .mobile-close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .mobile-close-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* 手机端菜单项增大点击区域 */
+  ::deep(.el-menu-item) {
+    height: 52px;
+    font-size: 15px;
   }
 
   .weather-widget {
@@ -1044,7 +1148,38 @@ function goToFullAiService() {
   }
 
   .w-loc {
-    display: none; /* 小屏隐藏地点，保持简洁 */
+    display: none;
+  }
+
+  .header-center {
+    display: none; /* 手机端隐藏天气，居中靠左 */
+  }
+
+  /* 手机端悬浮按钮调整位置 */
+  .float-ai-btn {
+    right: 16px;
+    bottom: 16px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .float-chat-panel {
+    right: 8px;
+    bottom: 76px;
+    width: calc(100vw - 16px);
+    max-width: 360px;
+    height: calc(100vh - 120px);
+    max-height: 520px;
+    border-radius: 16px;
+  }
+
+  /* 手机端通知抽屉全屏 */
+  ::deep(.el-drawer) {
+    width: 100% !important;
+  }
+
+  .glass-header .toggle-btn {
+    display: flex; /* 手机端显示汉堡按钮 */
   }
 }
 
@@ -1515,7 +1650,7 @@ function goToFullAiService() {
 }
 </style>
 
-<!-- 暗色主题覆盖（不加 scoped，确保全局生效） -->
+/* 暗色主题覆盖（不加 scoped，确保全局生效） */
 <style>
 html.dark .app-shell {
   background-color: #141414 !important;

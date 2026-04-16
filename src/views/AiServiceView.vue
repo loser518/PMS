@@ -1,11 +1,44 @@
 <script setup>
 import {ref, computed, nextTick, onMounted, onBeforeUnmount} from "vue";
-import {ElMessageBox} from "element-plus";
+import {ElMessageBox, ElMessage} from "element-plus";
+import {Edit} from "@element-plus/icons-vue";
 import {useAuthStore} from "../stores/auth";
 import axios from "axios";
 import http from "../api/http";
 
 const authStore = useAuthStore();
+const MINIO_BASE_URL = (import.meta.env.VITE_MINIO_BASE_URL || 'http://127.0.0.1:9000/pms-bucket') + '/';
+
+// 是否是管理员
+const isAdmin = computed(() => authStore.role === 2);
+
+// AI头像URL（支持管理员自定义）
+const AI_AVATAR_KEY = 'pms_ai_avatar_url';
+const defaultAiAvatar = 'https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/ogAiAnIdwAA10dMhAEO6baDGPFw1lX2BjpaPi~tplv-dy-aweme-images:q75.webp?biz_tag=aweme_images&from=327834062&lk3s=138a59ce&s=PackSourceEnum_SEARCH&sc=image&se=false&x-expires=1776286800&x-signature=%2B1sBLX32yx4qb4DApo2Tz%2BvSS3s%3D';
+const aiAvatarUrl = ref(localStorage.getItem(AI_AVATAR_KEY) || defaultAiAvatar);
+
+// 修改AI头像对话框
+const avatarDialogVisible = ref(false);
+const newAvatarUrl = ref('');
+
+function openAvatarDialog() {
+  if (!isAdmin.value) return;
+  newAvatarUrl.value = aiAvatarUrl.value;
+  avatarDialogVisible.value = true;
+}
+
+function saveAiAvatar() {
+  if (!newAvatarUrl.value.trim()) {
+    ElMessage.warning('请输入头像URL');
+    return;
+  }
+  aiAvatarUrl.value = newAvatarUrl.value.trim();
+  localStorage.setItem(AI_AVATAR_KEY, aiAvatarUrl.value);
+  // 触发自定义事件，通知其他页面/组件同步更新
+  window.dispatchEvent(new CustomEvent('ai-avatar-updated', { detail: aiAvatarUrl.value }));
+  avatarDialogVisible.value = false;
+  ElMessage.success('AI头像已更新');
+}
 
 // ── 会话 ID（刷新页面保持同一会话） ──
 const SESSION_KEY = "pms_ai_session";
@@ -23,7 +56,7 @@ const sessionId = ref(getOrCreateSession());
 
 const WELCOME_MSG = {
   role: "assistant",
-  content: "👋 你好！我是 PMS 智能客服助手**小P**。\n\n我可以帮你：\n- 📋 查询你的课题申报状态\n- 📈 查看课题进度记录\n- 📢 获取最新系统公告\n- ❓ 解答系统使用疑问\n\n请问有什么我可以帮到你的？",
+  content: "👋 你好！我是 PMS 智能客服助手**小P**。\n我可以帮你：\n 📋 查询你的课题申报状态\n 📈 查看课题进度记录\n 📢 获取最新系统公告\n❓ 解答系统使用疑问\n请问有什么我可以帮到你的？",
 };
 
 // ── 消息列表 ──
@@ -63,8 +96,9 @@ const groupedSessions = computed(() => {
     {label: "更早", items: []},
   ];
   list.forEach((s) => {
-    const d = new Date(s.updateTime || s.createTime || 0);
-    const diffDays = Math.floor((now - d) / 86400000);
+    const src = String(s.updateTime || s.createTime || '').trim().replace(' ', 'T');
+    const serverDate = new Date(src);
+    const diffDays = isNaN(serverDate.getTime()) ? 999 : Math.floor((now - serverDate) / 86400000);
     if (diffDays === 0) groups[0].items.push(s);
     else if (diffDays === 1) groups[1].items.push(s);
     else if (diffDays < 7) groups[2].items.push(s);
@@ -226,7 +260,8 @@ async function sendMessage() {
   }
 
   const rawToken = authStore.token?.replace(/^Bearer\s+/i, "") || "";
-  const url = `/api/ai/customer/chat?sessionId=${encodeURIComponent(sessionId.value)}&message=${encodeURIComponent(text)}&token=${encodeURIComponent(rawToken)}`;
+  const apiKey = localStorage.getItem("pms-api-key") || "";
+  const url = `/api/ai/customer/chat?sessionId=${encodeURIComponent(sessionId.value)}&message=${encodeURIComponent(text)}&token=${encodeURIComponent(rawToken)}&apiKey=${encodeURIComponent(apiKey)}`;
 
   try {
     const es = new EventSource(url);
@@ -293,19 +328,43 @@ function startNewSession() {
 
 // ── 格式化时间 ──
 function formatTime(dateStr) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
+  // 处理 Date 对象或各种格式
+  if (!dateStr && dateStr !== 0) return "";
+
+  let src = "";
+  if (dateStr instanceof Date) {
+    // Date 对象 → 转为 "yyyy-MM-dd HH:mm:ss"
+    src = `${dateStr.getFullYear()}-${String(dateStr.getMonth()+1).padStart(2,'0')}-${String(dateStr.getDate()).padStart(2,'0')} ${String(dateStr.getHours()).padStart(2,'0')}:${String(dateStr.getMinutes()).padStart(2,'0')}`;
+  } else if (typeof dateStr === 'number') {
+    // 数字时间戳
+    const d = new Date(dateStr);
+    src = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  } else {
+    src = String(dateStr).trim().replace(' ', 'T');
+  }
+
+  // 用 JavaScript 原生解析 ISO 8601（含时区），得到正确的北京时间 Date
+  const serverDate = new Date(src);
+  if (isNaN(serverDate.getTime())) return "";
+
   const now = new Date();
-  const diffMs = now - d;
+  const diffMs = now - serverDate;
   const diffDays = Math.floor(diffMs / 86400000);
+
+  // 用北京时间分量格式化
+  const bh = (serverDate.getUTCHours() + 8) % 24;
+  const bm = serverDate.getUTCMinutes();
+
   if (diffDays === 0) {
-    return d.toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"});
+    return `${String(bh).padStart(2,'0')}:${String(bm).padStart(2,'0')}`;
   } else if (diffDays === 1) {
     return "昨天";
   } else if (diffDays < 7) {
     return diffDays + "天前";
   } else {
-    return d.toLocaleDateString("zh-CN", {month: "2-digit", day: "2-digit"});
+    const bday = serverDate.getUTCDate();
+    const bmo = serverDate.getUTCMonth() + 1;
+    return `${String(bmo).padStart(2,'0')}-${String(bday).padStart(2,'0')}`;
   }
 }
 
@@ -330,19 +389,39 @@ function renderMarkdown(text) {
       .replace(/\n/g, "<br/>");
 }
 
+// ── 同步AI头像更新 ──
+function handleAvatarUpdate(event) {
+  const newUrl = event.detail || localStorage.getItem(AI_AVATAR_KEY);
+  if (newUrl && newUrl !== aiAvatarUrl.value) {
+    aiAvatarUrl.value = newUrl;
+  }
+}
+
 onMounted(async () => {
   await Promise.all([loadHistory(sessionId.value), loadSessionList()]);
+  // 监听头像更新事件（同页面内的不同位置）
+  window.addEventListener('ai-avatar-updated', handleAvatarUpdate);
+  // 监听 localStorage 变化（多标签页情况）
+  window.addEventListener('storage', (e) => {
+    if (e.key === AI_AVATAR_KEY) {
+      aiAvatarUrl.value = e.newValue || defaultAiAvatar;
+    }
+  });
 });
 
 onBeforeUnmount(() => {
   if (currentEventSource) {
     currentEventSource.close();
   }
+  window.removeEventListener('ai-avatar-updated', handleAvatarUpdate);
 });
 </script>
 
 <template>
   <div class="ai-service-wrap">
+    <!-- ── 手机端遮罩层 ── -->
+    <div v-if="!sidebarCollapsed" class="cs-overlay" @click="toggleSidebar"></div>
+
     <!-- ── 左侧历史对话侧边栏 ── -->
     <div class="cs-sidebar" :class="{ collapsed: sidebarCollapsed }">
 
@@ -549,13 +628,19 @@ onBeforeUnmount(() => {
     <div class="cs-main">
       <!-- 头部 -->
       <div class="cs-header">
-        <div class="cs-avatar">
-          <span class="avatar-emoji"><el-avatar
-              :size="50"
-              src="https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/ogAiAnIdwAA10dMhAEO6baDGPFw1lX2BjpaPi~tplv-dy-aweme-images:q75.webp?biz_tag=aweme_images&from=327834062&lk3s=138a59ce&s=PackSourceEnum_SEARCH&sc=image&se=false&x-expires=1776286800&x-signature=%2B1sBLX32yx4qb4DApo2Tz%2BvSS3s%3D"
-          >
-              </el-avatar></span>
+        <div 
+          class="cs-avatar"
+          :class="{ 'admin-editable': isAdmin }"
+          @click="openAvatarDialog"
+          :title="isAdmin ? '点击修改AI头像' : ''"
+        >
+          <span class="avatar-emoji">
+            <el-avatar :size="50" :src="aiAvatarUrl" />
+          </span>
           <span class="online-dot"></span>
+          <div v-if="isAdmin" class="header-avatar-edit-overlay">
+            <el-icon><Edit /></el-icon>
+          </div>
         </div>
         <div class="cs-header-info">
           <div class="cs-name">小P · 智能客服</div>
@@ -588,12 +673,20 @@ onBeforeUnmount(() => {
         >
           <!-- AI消息：头像在左 -->
           <template v-if="msg.role === 'assistant'">
-            <div class="msg-avatar ai-avatar">
+            <div 
+              class="msg-avatar ai-avatar" 
+              :class="{ 'admin-editable': isAdmin }"
+              @click="openAvatarDialog"
+              :title="isAdmin ? '点击修改AI头像' : ''"
+            >
               <el-avatar
                   :size="36"
-                  src="https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/ogAiAnIdwAA10dMhAEO6baDGPFw1lX2BjpaPi~tplv-dy-aweme-images:q75.webp?biz_tag=aweme_images&from=327834062&lk3s=138a59ce&s=PackSourceEnum_SEARCH&sc=image&se=false&x-expires=1776286800&x-signature=%2B1sBLX32yx4qb4DApo2Tz%2BvSS3s%3D"
+                  :src="aiAvatarUrl"
               >
               </el-avatar>
+              <div v-if="isAdmin" class="avatar-edit-overlay">
+                <el-icon><Edit/></el-icon>
+              </div>
             </div>
             <div class="msg-bubble">
               <div
@@ -614,10 +707,7 @@ onBeforeUnmount(() => {
             <div class="msg-avatar user-avatar">
               <el-avatar
                   :size="36"
-                  :src="
-                  'http://127.0.0.1:9000/pms-bucket/' +
-                  authStore.userInfo?.user?.avatar
-                "
+                  :src="MINIO_BASE_URL + authStore.userInfo?.user?.avatar"
               >
                 <img
                     src="https://cube.elemecdn.com/9/c2/f0ee8a3c7c9638a54940382568c9dpng.png"
@@ -687,6 +777,30 @@ onBeforeUnmount(() => {
       </div>
     </div>
   </div>
+
+  <!-- 修改AI头像对话框（仅管理员可见） -->
+  <el-dialog
+    v-model="avatarDialogVisible"
+    title="修改AI头像"
+    width="400px"
+  >
+    <el-form label-width="80px">
+      <el-form-item label="头像URL">
+        <el-input 
+          v-model="newAvatarUrl" 
+          placeholder="请输入图片URL地址"
+          clearable
+        />
+      </el-form-item>
+      <el-form-item label="预览">
+        <el-avatar :size="64" :src="newAvatarUrl" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="avatarDialogVisible = false">取消</el-button>
+      <el-button type="primary" @click="saveAiAvatar">保存</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <style scoped>
@@ -1053,6 +1167,9 @@ onBeforeUnmount(() => {
 .session-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .session-title {
@@ -1073,7 +1190,6 @@ onBeforeUnmount(() => {
 .session-time {
   font-size: 11px;
   color: var(--muted);
-  margin-top: 1px;
 }
 
 .session-del-btn {
@@ -1248,6 +1364,36 @@ onBeforeUnmount(() => {
   box-shadow: 0 2px 6px rgba(82, 196, 26, 0.4);
 }
 
+/* 头部头像管理员可编辑样式 */
+.cs-avatar.admin-editable {
+  cursor: pointer;
+}
+
+.cs-avatar.admin-editable:hover {
+  transform: scale(1.05);
+}
+
+.header-avatar-edit-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+  color: #fff;
+  font-size: 18px;
+}
+
+.cs-avatar.admin-editable:hover .header-avatar-edit-overlay {
+  opacity: 1;
+}
+
 @keyframes pulse {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.4);
@@ -1358,6 +1504,38 @@ onBeforeUnmount(() => {
   font-size: 20px;
   box-shadow: 0 4px 12px rgba(65, 88, 208, 0.2);
   border: 2px solid #fff;
+  position: relative;
+  cursor: default;
+}
+
+/* 管理员可编辑状态 */
+.ai-avatar.admin-editable {
+  cursor: pointer;
+}
+
+.ai-avatar.admin-editable:hover {
+  box-shadow: 0 4px 16px rgba(65, 88, 208, 0.4);
+}
+
+.avatar-edit-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+  color: #fff;
+  font-size: 16px;
+}
+
+.ai-avatar.admin-editable:hover .avatar-edit-overlay {
+  opacity: 1;
 }
 
 .user-avatar {
@@ -1607,5 +1785,119 @@ onBeforeUnmount(() => {
 
 .send-btn:active:not(:disabled) {
   transform: scale(0.95);
+}
+
+/* ==================== 手机端 (768px 以下) ==================== */
+@media (max-width: 768px) {
+  .ai-service-wrap {
+    height: calc(100vh - 130px);
+    min-height: unset;
+    border-radius: 0;
+    position: relative;
+  }
+
+  /* 遮罩层 */
+  .cs-overlay {
+    display: none;
+  }
+
+  /* 侧边栏默认展开（手机端无折叠态），作为全屏抽屉 */
+  .cs-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 75vw !important;
+    max-width: 300px;
+    z-index: 2000;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .cs-sidebar:not(.collapsed) {
+    transform: translateX(0);
+  }
+
+  /* 遮罩层跟随出现 */
+  .cs-sidebar:not(.collapsed) ~ .cs-overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 1999;
+  }
+
+  /* 手机端侧边栏头部加大 */
+  .sidebar-header {
+    padding: 18px 16px 14px;
+  }
+
+  .sidebar-title {
+    font-size: 15px;
+  }
+
+  /* 手机端会话列表项加大 */
+  .session-item {
+    padding: 10px 12px;
+  }
+
+  .session-title {
+    font-size: 14px;
+  }
+
+  .session-time {
+    font-size: 12px;
+  }
+
+  /* 手机端快捷按钮换行 */
+  .quick-btns {
+    flex-wrap: wrap;
+  }
+
+  .quick-btns .el-button {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  /* 手机端输入区 */
+  .cs-footer {
+    padding: 10px 12px 14px;
+  }
+
+  .chat-input .el-textarea__inner {
+    font-size: 15px;
+  }
+
+  /* 手机端主聊天区 */
+  .cs-main {
+    width: 100%;
+  }
+
+  .cs-body {
+    padding: 12px;
+  }
+
+  /* 手机端会话列表宽度撑满 */
+  .sidebar-body {
+    padding: 4px 10px 10px;
+  }
+
+  /* 搜索框 */
+  .sidebar-search {
+    padding: 0 10px 10px;
+  }
+
+  /* 底部统计 */
+  .sidebar-footer {
+    padding: 10px 12px;
+  }
+
+  .footer-count {
+    font-size: 12px;
+  }
 }
 </style>
